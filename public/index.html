@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-key="title">Bitcoin Mining Simulator</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 data-key="title">Bitcoin Mining Simulator</h1>
+      <p data-key="subtitle">ขุดบิตคอยน์จำลองและบริหารพลังงานของคุณ!</p>
+      <select id="language" onchange="changeLanguage(this.value)">
+        <option value="en">English</option>
+        <option value="th">ไทย</option>
+      </select>
+    </header>
+
+    <div class="dashboard">
+      <div class="stats-card">
+        <h2 data-key="stats_title">สถานะการขุด</h2>
+        <p data-key="hash_rate">Hash Rate: <span id="hashRate">0</span> H/s</p>
+        <p data-key="power_consumption">Power Consumption: <span id="powerConsumption">0</span> kW</p>
+        <p data-key="total_power_used">Total Power Used: <span id="totalPowerUsed">0</span> kWh</p>
+        <p data-key="bitcoin_mined">Bitcoin Mined: <span id="bitcoinMined">0</span> BTC</p>
+        <p data-key="blocks_mined">Blocks Mined: <span id="blocksMined">0</span></p>
+        <p data-key="block_reward">Block Reward: <span id="blockReward">0</span> BTC</p>
+        <p data-key="wallet">Wallet: $<span id="wallet">0</span></p>
+        <p data-key="btc_price">BTC Price: $<span id="btcPrice">0</span></p>
+        <p data-key="difficulty">Difficulty: <span id="difficulty">0</span></p>
+      </div>
+
+      <div class="controls-card">
+        <h2 data-key="controls_title">ควบคุม</h2>
+        <button class="start-btn" onclick="startMining()" data-key="start_mining">เริ่มขุด</button>
+        <button class="stop-btn" onclick="stopMining()" data-key="stop_mining">หยุดขุด</button>
+        <button class="save-btn" onclick="saveGame()" data-key="save_game">บันทึกเกม</button>
+        <button class="load-btn" onclick="loadGame()" data-key="load_game">โหลดเกม</button>
+      </div>
+    </div>
+
+    <div class="shop-card">
+      <h2 data-key="shop_title">ร้านค้า</h2>
+      <div class="shop-items">
+        <div class="shop-item">
+          <p data-key="basic_rig_name">Basic Rig</p>
+          <p>5000 H/s, +0.5 kW, $1000</p>
+          <button onclick="upgradeRig(5000, 0.5, 1000)" data-key="buy">ซื้อ</button>
+        </div>
+        <div class="shop-item">
+          <p data-key="advanced_rig_name">Advanced Rig</p>
+          <p>20000 H/s, +2 kW, $5000</p>
+          <button onclick="upgradeRig(20000, 2, 5000)" data-key="buy">ซื้อ</button>
+        </div>
+        <div class="shop-item">
+          <p data-key="pro_rig_name">Pro Rig</p>
+          <p>100000 H/s, +10 kW, $25000</p>
+          <button onclick="upgradeRig(100000, 10, 25000)" data-key="buy">ซื้อ</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h2 data-key="chart_title">กราฟข้อมูล</h2>
+      <canvas id="miningChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+
+  <script>
+    let chart;
+    let translations = {};
+    let currentLang = 'en';
+
+    function loadTranslations(lang) {
+      fetch(`/translations/${lang}`)
+        .then(response => response.json())
+        .then(data => {
+          translations = data;
+          applyTranslations();
+        });
+    }
+
+    function applyTranslations() {
+      document.querySelectorAll('[data-key]').forEach(element => {
+        const key = element.getAttribute('data-key');
+        if (translations[key]) {
+          if (element.tagName === 'BUTTON') {
+            element.textContent = translations[key];
+          } else {
+            const span = element.querySelector('span');
+            element.innerHTML = translations[key] + (span ? ` <span id="${span.id}">${span.textContent}</span>` : '');
+          }
+        }
+      });
+      document.title = translations['title'] || 'Bitcoin Mining Simulator';
+    }
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      loadTranslations(lang);
+    }
+
+    function updateStats() {
+      fetch('/stats')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('hashRate').textContent = data.hashRate;
+          document.getElementById('powerConsumption').textContent = data.powerConsumption;
+          document.getElementById('totalPowerUsed').textContent = data.totalPowerUsed;
+          document.getElementById('bitcoinMined').textContent = data.bitcoinMined;
+          document.getElementById('blocksMined').textContent = data.blocksMined;
+          document.getElementById('blockReward').textContent = data.blockReward;
+          document.getElementById('wallet').textContent = data.wallet;
+          document.getElementById('btcPrice').textContent = data.btcPrice;
+          document.getElementById('difficulty').textContent = data.difficulty;
+
+          updateChart(data.history);
+        });
+    }
+
+    function startMining() {
+      fetch('/start', { method: 'POST' }).then(updateStats);
+    }
+
+    function stopMining() {
+      fetch('/stop', { method: 'POST' }).then(updateStats);
+    }
+
+    function upgradeRig(hashRate, power, cost) {
+      fetch('/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashRate, power, cost })
+      }).then(response => response.json())
+        .then(data => {
+          if (data.status === 'insufficient_funds') alert(translations['insufficient_funds'] || 'Not enough money!');
+          updateStats();
+        });
+    }
+
+    function saveGame() {
+      fetch('/save', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.status === 'game_saved' ? translations['game_saved'] : translations['save_failed']));
+    }
+
+    function loadGame() {
+      fetch('/load', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          alert(data.status === 'game_loaded' ? translations['game_loaded'] : translations['no_save_found']);
+          updateStats();
+        });
+    }
+
+    function updateChart(history) {
+      const ctx = document.getElementById('miningChart').getContext('2d');
+      if (!chart) {
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [
+              { label: translations['btc_mined'] || 'BTC Mined', data: [], borderColor: '#f7931a', fill: false },
+              { label: translations['btc_price'] || 'BTC Price ($)', data: [], borderColor: '#3498db', fill: false }
+            ]
+          },
+          options: { scales: { y: { beginAtZero: false } } }
+        });
+      }
+      chart.data.labels = history.map(h => h.time);
+      chart.data.datasets[0].data = history.map(h => h.btcMined);
+      chart.data.datasets[1].data = history.map(h => h.btcPrice);
+      chart.update();
+    }
+
+    // โหลดภาษาเริ่มต้น
+    loadTranslations('en');
+    setInterval(updateStats, 1000);
+    updateStats();
+  </script>
+</body>
+</html>
