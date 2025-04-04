@@ -1,0 +1,120 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-key="title">Bitcoin Mining Simulator</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 data-key="title">Bitcoin Mining Simulator</h1>
+      <div class="user-info">
+        <span id="usernameDisplay">User: Guest</span>
+        <button onclick="logout()" data-key="logout">Logout</button>
+      </div>
+      <nav>
+        <button onclick="showTab('mining')" class="active" data-key="mining_tab">Mining</button>
+        <button onclick="showTab('trading')" data-key="trading_tab">Trading</button>
+        <button onclick="showTab('shop')" data-key="shop_tab">Shop</button>
+        <button onclick="showTab('missions')" data-key="missions_tab">Missions</button>
+        <select id="language" onchange="changeLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="th">ไทย</option>
+        </select>
+      </nav>
+    </header>
+
+    <div id="mining" class="tab-content active">
+      <div class="dashboard">
+        <div class="stats-card">
+          <h2 data-key="stats_title">Mining Status</h2>
+          <p data-key="level">Level: <span id="level">1</span></p>
+          <p data-key="exp">EXP: <span id="exp">0</span>/<span id="expNeeded">100</span></p> <!-- ตรวจสอบว่า expNeeded อยู่ที่นี่ -->
+          <p data-key="hash_rate">Hash Rate: <span id="hashRate">0</span> H/s</p>
+          <p data-key="power_consumption">Power Consumption: <span id="powerConsumption">0</span> kW</p>
+          <p data-key="total_power_used">Total Power Used: <span id="totalPowerUsed">0</span> kWh</p>
+          <p data-key="bitcoin_mined">Bitcoin Mined: <span id="bitcoinMined">0</span> BTC</p>
+          <p data-key="blocks_mined">Blocks Mined: <span id="blocksMined">0</span></p>
+          <p data-key="block_reward">Block Reward: <span id="blockReward">0</span> BTC</p>
+          <p data-key="wallet">Wallet: $<span id="wallet">0</span></p>
+          <p data-key="btc_price">BTC Price: $<span id="btcPrice">0</span></p>
+          <p data-key="difficulty">Difficulty: <span id="difficulty">0</span></p>
+          <p data-key="energy_type">Energy Type: <span id="energyType">grid</span></p>
+          <p data-key="solar_power">Solar Power: <span id="solarPower">0</span> kW</p>
+          <p data-key="temp">Temperature: <span id="temp">20</span>°C</p>
+          <p data-key="gpu_level">GPU Level: <span id="gpuLevel">1</span></p>
+        </div>
+        <div class="controls-card">
+          <h2 data-key="controls_title">Controls</h2>
+          <button class="start-btn" onclick="startMining()" data-key="start_mining">Start Mining</button>
+          <button class="stop-btn" onclick="stopMining()" data-key="stop_mining">Stop Mining</button>
+          <button class="save-btn" onclick="saveGame()" data-key="save_game">Save Game</button>
+          <button class="load-btn" onclick="loadGame()" data-key="load_game">Load Game</button>
+          <div id="miningLog" class="mining-log"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h2 data-key="chart_title">Data Graph</h2>
+        <canvas id="miningChart" width="400" height="200"></canvas>
+      </div>
+    </div>
+
+    <div id="trading" class="tab-content">
+      <h2 data-key="trading_title">Trading</h2>
+      <div class="trading-card">
+        <p data-key="btc_price">Current BTC Price: $<span id="tradeBtcPrice">0</span></p>
+        <p data-key="bitcoin_mined">Your BTC: <span id="tradeBitcoinMined">0</span> BTC</p>
+        <p data-key="wallet">Your Wallet: $<span id="tradeWallet">0</span></p>
+        <input type="number" id="tradeAmount" min="0" step="0.01" placeholder="Amount">
+        <button onclick="tradeBTC('buy')" data-key="buy_btc">Buy BTC</button>
+        <button onclick="tradeBTC('sell')" data-key="sell_btc">Sell BTC</button>
+      </div>
+    </div>
+
+    <div id="shop" class="tab-content">
+      <h2 data-key="shop_title">Shop</h2>
+      <div class="shop-items">
+        <div class="shop-item" id="basicRig">
+          <p data-key="basic_rig_name">Basic Rig</p>
+          <p>5000 H/s, +0.5 kW, $1000</p>
+          <button onclick="upgradeRig(5000, 0.5, 1000, 'basicRig')" data-key="buy">Buy</button>
+        </div>
+        <div class="shop-item" id="advancedRig">
+          <p data-key="advanced_rig_name">Advanced Rig</p>
+          <p>20000 H/s, +2 kW, $5000</p>
+          <button onclick="upgradeRig(20000, 2, 5000, 'advancedRig')" data-key="buy">Buy</button>
+        </div>
+        <div class="shop-item" id="proRig">
+          <p data-key="pro_rig_name">Pro Rig</p>
+          <p>100000 H/s, +10 kW, $25000</p>
+          <button onclick="upgradeRig(100000, 10, 25000, 'proRig')" data-key="buy">Buy</button>
+        </div>
+        <div class="shop-item" id="solar">
+          <p data-key="solar_panel">Solar Panel</p>
+          <p>+5 kW Solar, $10000</p>
+          <button onclick="buySolar(5, 10000)" data-key="buy">Buy</button>
+        </div>
+        <div class="shop-item">
+          <p data-key="gpu_upgrade">GPU Upgrade (Level 2)</p>
+          <p>+1000 H/s, $2000</p>
+          <button onclick="upgradeGPU(2, 2000)" data-key="buy">Buy</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="missions" class="tab-content">
+      <h2 data-key="missions_title">Missions</h2>
+      <div id="missions-list"></div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+  </div>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>

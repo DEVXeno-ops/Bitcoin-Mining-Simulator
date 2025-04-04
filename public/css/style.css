@@ -1,0 +1,83 @@
+/* public/css/style.css */
+body {
+    font-family: 'Orbitron', sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  .container, .auth-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: #2a2a2a;
+    padding: 20px;
+    border-radius: 10px;
+  }
+  
+  h1, h2 {
+    color: #f7931a;
+  }
+  
+  button {
+    background: #f7931a;
+    border: none;
+    padding: 10px 20px;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  
+  button:disabled {
+    background: #555;
+    cursor: not-allowed;
+  }
+  
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  nav button {
+    margin-right: 10px;
+  }
+  
+  nav button.active {
+    background: #3498db;
+  }
+  
+  .notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f7931a;
+    padding: 10px 20px;
+    border-radius: 5px;
+    display: none;
+  }
+  
+  .notification.show {
+    display: block;
+  }
+  
+  .dashboard, .trading-card, .shop-items, #missions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  .stats-card, .controls-card, .shop-item, .mission-item {
+    background: #333;
+    padding: 20px;
+    border-radius: 10px;
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  .mining-log p {
+    margin: 5px 0;
+  }
