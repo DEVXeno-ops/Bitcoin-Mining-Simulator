@@ -1,0 +1,40 @@
+{
+  "hashRate": 1000,
+  "powerConsumption": 0.1,
+  "totalPowerUsed": 0.0009166666666666674,
+  "bitcoinMined": 12.5,
+  "blocksMined": 2,
+  "blockReward": 6.25,
+  "wallet": 1499.9998900000003,
+  "btcPrice": 63755.46048945329,
+  "solarPower": 0,
+  "energyType": "grid",
+  "level": 1,
+  "exp": 20,
+  "temp": 19.83000000000005,
+  "gpuLevel": 1,
+  "missions": [
+    {
+      "id": 1,
+      "desc": "Mine 1 BTC",
+      "reward": 500,
+      "progress": 6.25,
+      "target": 1,
+      "completed": true
+    },
+    {
+      "id": 2,
+      "desc": "Mine 5 blocks",
+      "reward": 1000,
+      "progress": 2,
+      "target": 5,
+      "completed": false
+    }
+  ],
+  "purchases": {
+    "basicRig": false,
+    "advancedRig": false,
+    "proRig": false,
+    "solar": false
+  }
+}

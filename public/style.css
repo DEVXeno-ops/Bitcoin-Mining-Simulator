@@ -1,35 +1,67 @@
 body {
     font-family: 'Segoe UI', Arial, sans-serif;
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    background: url('assets/background.jpg') no-repeat center center fixed;
+    background-size: cover;
     margin: 0;
     padding: 20px;
-    color: #333;
+    color: #fff;
   }
   
   .container {
     max-width: 1200px;
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(0, 0, 0, 0.9);
     padding: 20px;
     border-radius: 15px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   }
   
   header {
     text-align: center;
     padding-bottom: 20px;
-    border-bottom: 1px solid #ddd;
   }
   
   header h1 {
     margin: 0;
     font-size: 2.5em;
-    color: #f7931a; /* สีส้มของ Bitcoin */
+    color: #f7931a;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   }
   
-  header p {
-    margin: 5px 0;
-    color: #666;
+  nav {
+    margin-top: 10px;
+  }
+  
+  nav button {
+    padding: 10px 20px;
+    margin: 0 5px;
+    background: #2a5298;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+  }
+  
+  nav button:hover, nav button.active {
+    background: #f7931a;
+    transform: scale(1.05);
+  }
+  
+  select {
+    padding: 8px;
+    margin-left: 10px;
+    border-radius: 5px;
+    background: #fff;
+    color: #333;
+  }
+  
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
   }
   
   .dashboard {
@@ -39,26 +71,27 @@ body {
     margin: 20px 0;
   }
   
-  .stats-card, .controls-card, .shop-card, .chart-card {
+  .stats-card, .controls-card, .trading-card, .shop-card, .chart-card {
     flex: 1;
     min-width: 300px;
-    background: #fff;
+    background: rgba(255, 255, 255, 0.1);
     padding: 20px;
     border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
   }
   
-  .stats-card h2, .controls-card h2, .shop-card h2, .chart-card h2 {
-    margin-top: 0;
-    color: #2a5298;
+  h2 {
+    color: #f7931a;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
   }
   
-  .stats-card p {
+  p {
     margin: 10px 0;
     font-size: 1.1em;
   }
   
-  .stats-card span {
+  span {
     font-weight: bold;
     color: #f7931a;
   }
@@ -77,33 +110,21 @@ body {
     transform: scale(1.05);
   }
   
-  .start-btn {
-    background-color: #28a745;
-    color: white;
-  }
-  
+  .start-btn { background-color: #28a745; color: white; }
   .start-btn:hover { background-color: #218838; }
-  
-  .stop-btn {
-    background-color: #dc3545;
-    color: white;
-  }
-  
+  .stop-btn { background-color: #dc3545; color: white; }
   .stop-btn:hover { background-color: #c82333; }
-  
-  .save-btn {
-    background-color: #007bff;
-    color: white;
-  }
-  
+  .save-btn { background-color: #007bff; color: white; }
   .save-btn:hover { background-color: #0069d9; }
-  
-  .load-btn {
-    background-color: #6c757d;
-    color: white;
-  }
-  
+  .load-btn { background-color: #6c757d; color: white; }
   .load-btn:hover { background-color: #5a6268; }
+  
+  .trading-card input {
+    padding: 8px;
+    margin: 10px;
+    border-radius: 5px;
+    border: none;
+  }
   
   .shop-items {
     display: flex;
@@ -112,29 +133,59 @@ body {
     justify-content: center;
   }
   
-  .shop-item {
-    background: #f8f9fa;
+  .shop-item, .mission-item {
+    background: rgba(255, 255, 255, 0.1);
     padding: 15px;
     border-radius: 8px;
     text-align: center;
     flex: 1;
     min-width: 200px;
     max-width: 250px;
+    transition: transform 0.2s;
   }
   
-  .shop-item p {
-    margin: 5px 0;
+  .shop-item:hover {
+    transform: scale(1.03);
   }
   
-  .shop-item button {
+  .shop-item button, .trading-card button {
     background-color: #f7931a;
     color: white;
   }
   
-  .shop-item button:hover { background-color: #e68a00; }
+  .shop-item button:hover, .trading-card button:hover {
+    background-color: #e68a00;
+  }
   
-  .chart-card {
-    margin-top: 20px;
+  .mining-log {
+    margin-top: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.9em;
+    color: #ccc;
+  }
+  
+  .notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #f7931a;
+    padding: 10px 20px;
+    border-radius: 5px;
+    display: none;
+  }
+  
+  .notification.show {
+    display: block;
+    animation: fadeInOut 3s;
+  }
+  
+  @keyframes fadeInOut {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
   }
   
   @media (max-width: 768px) {
