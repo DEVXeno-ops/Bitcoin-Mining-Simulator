@@ -56,5 +56,10 @@
     "game_loaded": "โหลดสำเร็จ!",
     "no_save_found": "ไม่พบข้อมูลบันทึก!",
     "Mine 1 BTC": "ขุด 1 BTC",
-    "Mine 5 blocks": "ขุด 5 บล็อก"
+    "Mine 5 blocks": "ขุด 5 บล็อก",
+    "logout": "ออกจากระบบ",
+    "missing_fields": "กรุณากรอกข้อมูลให้ครบ",
+    "invalid_credentials": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+    "user_exists": "ชื่อผู้ใช้มีอยู่แล้ว",
+    "register_failed": "สมัครสมาชิกไม่สำเร็จ"
   }

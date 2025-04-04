@@ -112,7 +112,7 @@ class BitcoinMiner {
       const hash = this.calculateHash(header);
       if (hash < this.difficulty) {
         this.bitcoinMined += this.blockReward;
-        this.blocksMined++;
+        this.keysMined++;
         this.exp += 10;
         this.nonce = 0;
         this.miningLog.push(`Block mined! Reward: ${this.blockReward} BTC at ${new Date().toLocaleTimeString()}`);
@@ -129,7 +129,7 @@ class BitcoinMiner {
     this.temp += this.powerConsumption * 0.1;
     if (this.temp >= 80) this.stopMining();
 
-    if (this.blocksMined % 50 === 0 && this.blocksMined > 0) {
+    if (this.keysMined % 50 === 0 && this.keysMined > 0) {
       this.blockReward /= 2;
     }
 
@@ -162,7 +162,7 @@ class BitcoinMiner {
     this.missions.forEach(mission => {
       if (!mission.completed) {
         if (mission.id === 1) mission.progress = this.bitcoinMined;
-        if (mission.id === 2) mission.progress = this.blocksMined;
+        if (mission.id === 2) mission.progress = this.keysMined;
         if (mission.progress >= mission.target) {
           mission.completed = true;
           this.wallet += mission.reward;
@@ -178,7 +178,7 @@ class BitcoinMiner {
       powerConsumption: this.powerConsumption,
       totalPowerUsed: this.totalPowerUsed.toFixed(4),
       bitcoinMined: this.bitcoinMined.toFixed(4),
-      blocksMined: this.blocksMined,
+      blocksMined: this.keysMined,
       blockReward: this.blockReward.toFixed(4),
       wallet: this.wallet.toFixed(2),
       btcPrice: this.btcPrice.toFixed(2),
@@ -203,7 +203,7 @@ class BitcoinMiner {
       powerConsumption: this.powerConsumption,
       totalPowerUsed: this.totalPowerUsed,
       bitcoinMined: this.bitcoinMined,
-      blocksMined: this.blocksMined,
+      blocksMined: this.keysMined,
       blockReward: this.blockReward,
       wallet: this.wallet,
       btcPrice: this.btcPrice,
@@ -222,8 +222,12 @@ class BitcoinMiner {
   }
 
   loadGame() {
+    const saveFile = path.join(__dirname, 'data', 'saves', `${this.username}.json`);
+    if (!fs.existsSync(saveFile) || fs.readFileSync(saveFile, 'utf8').trim() === '') {
+      return { status: 'no_save_found' };
+    }
     try {
-      const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'saves', `${this.username}.json`)));
+      const data = JSON.parse(fs.readFileSync(saveFile, 'utf8'));
       this.hashRate = data.hashRate || 1000;
       this.powerConsumption = data.powerConsumption || 0.1;
       this.totalPowerUsed = data.totalPowerUsed || 0;
@@ -242,42 +246,77 @@ class BitcoinMiner {
       this.purchases = data.purchases || { basicRig: false, advancedRig: false, proRig: false, solar: false };
       return { status: 'game_loaded' };
     } catch (error) {
-      return { status: 'no_save_found' };
+      console.error(`Error loading game for ${this.username}:`, error);
+      return { status: 'load_failed' };
     }
   }
 }
 
 const app = express();
-let miners = {}; // เก็บข้อมูล miner แยกตามผู้ใช้
+let miners = {};
 let currentUser = null;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Ensure data directory exists
+fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+
 // Authentication
 app.post('/register', (req, res) => {
   const { username, password } = req.body;
-  const users = fs.existsSync(path.join(__dirname, 'data', 'users.json'))
-    ? JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'users.json')))
-    : {};
+  if (!username || !password) return res.json({ status: 'missing_fields' });
+
+  const usersFile = path.join(__dirname, 'data', 'users.json');
+  let users = {};
+  if (fs.existsSync(usersFile) && fs.readFileSync(usersFile, 'utf8').trim() !== '') {
+    try {
+      users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+    } catch (error) {
+      console.error('Error parsing users.json:', error);
+      users = {};
+    }
+  }
+
   if (users[username]) return res.json({ status: 'user_exists' });
+
   users[username] = { password: crypto.createHash('sha256').update(password).digest('hex') };
-  fs.writeFileSync(path.join(__dirname, 'data', 'users.json'), JSON.stringify(users, null, 2));
-  miners[username] = new BitcoinMiner(username);
-  currentUser = username;
-  res.json({ status: 'registered' });
+  try {
+    fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+    miners[username] = new BitcoinMiner(username);
+    currentUser = username;
+    res.json({ status: 'registered', username });
+  } catch (error) {
+    console.error('Error saving users:', error);
+    res.json({ status: 'register_failed' });
+  }
 });
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
-  const users = fs.existsSync(path.join(__dirname, 'data', 'users.json'))
-    ? JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'users.json')))
-    : {};
+  if (!username || !password) return res.json({ status: 'missing_fields' });
+
+  const usersFile = path.join(__dirname, 'data', 'users.json');
+  let users = {};
+  if (fs.existsSync(usersFile) && fs.readFileSync(usersFile, 'utf8').trim() !== '') {
+    try {
+      users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+    } catch (error) {
+      console.error('Error parsing users.json:', error);
+      return res.json({ status: 'login_failed' });
+    }
+  } else {
+    return res.json({ status: 'no_users_found' });
+  }
+
   const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-  if (!users[username] || users[username].password !== hashedPassword) return res.json({ status: 'invalid_credentials' });
+  if (!users[username] || users[username].password !== hashedPassword) {
+    return res.json({ status: 'invalid_credentials' });
+  }
+
   if (!miners[username]) miners[username] = new BitcoinMiner(username);
   currentUser = username;
-  res.json({ status: 'logged_in' });
+  res.json({ status: 'logged_in', username });
 });
 
 app.post('/logout', (req, res) => {

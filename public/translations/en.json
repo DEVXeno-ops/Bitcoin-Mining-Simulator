@@ -56,5 +56,10 @@
     "game_loaded": "Game loaded!",
     "no_save_found": "No save found!",
     "Mine 1 BTC": "Mine 1 BTC",
-    "Mine 5 blocks": "Mine 5 blocks"
+    "Mine 5 blocks": "Mine 5 blocks",
+    "logout": "Logout",
+    "missing_fields": "Please fill in all fields",
+    "invalid_credentials": "Invalid username or password",
+    "user_exists": "Username already exists",
+    "register_failed": "Registration failed"
   }
