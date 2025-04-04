@@ -11,6 +11,10 @@
   <div class="container">
     <header>
       <h1 data-key="title">Bitcoin Mining Simulator</h1>
+      <div class="user-info">
+        <span id="usernameDisplay"></span>
+        <button onclick="logout()" data-key="logout">Logout</button>
+      </div>
       <nav>
         <button onclick="showTab('mining')" class="active" data-key="mining_tab">Mining</button>
         <button onclick="showTab('trading')" data-key="trading_tab">Trading</button>
@@ -163,6 +167,8 @@
       fetch('/stats')
         .then(response => response.json())
         .then(data => {
+          if (data.status === 'not_logged_in') return window.location.href = 'login.html';
+          document.getElementById('usernameDisplay').textContent = `User: ${data.username}`;
           document.getElementById('level').textContent = data.level;
           document.getElementById('exp').textContent = data.exp;
           document.getElementById('expNeeded').textContent = data.level * 100;
@@ -287,6 +293,14 @@
         });
     }
 
+    function logout() {
+      fetch('/logout', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'logged_out') window.location.href = 'login.html';
+        });
+    }
+
     function updateChart(history) {
       const ctx = document.getElementById('miningChart').getContext('2d');
       if (!chart) {
@@ -312,6 +326,7 @@
       fetch('/stats')
         .then(response => response.json())
         .then(data => {
+          if (data.status === 'not_logged_in') return;
           const missionsList = document.getElementById('missions-list');
           missionsList.innerHTML = '';
           data.missions.forEach(mission => {

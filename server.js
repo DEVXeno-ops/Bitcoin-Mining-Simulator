@@ -5,7 +5,8 @@ const path = require('path');
 require('dotenv').config();
 
 class BitcoinMiner {
-  constructor() {
+  constructor(username) {
+    this.username = username;
     this.hashRate = 1000;
     this.powerConsumption = 0.1;
     this.totalPowerUsed = 0;
@@ -23,14 +24,14 @@ class BitcoinMiner {
     this.solarPower = 0;
     this.level = 1;
     this.exp = 0;
-    this.temp = 20; // อุณหภูมิ (°C)
-    this.gpuLevel = 1; // ระดับการ์ดจอ
+    this.temp = 20;
+    this.gpuLevel = 1;
     this.missions = [
       { id: 1, desc: 'Mine 1 BTC', reward: 500, progress: 0, target: 1, completed: false },
       { id: 2, desc: 'Mine 5 blocks', reward: 1000, progress: 0, target: 5, completed: false }
     ];
     this.purchases = { basicRig: false, advancedRig: false, proRig: false, solar: false };
-    this.miningLog = []; // บันทึกการขุด
+    this.miningLog = [];
   }
 
   createBlockHeader(nonce) {
@@ -73,7 +74,7 @@ class BitcoinMiner {
   upgradeGPU(level, cost) {
     if (this.wallet < cost) return { status: 'insufficient_funds' };
     this.gpuLevel = level;
-    this.hashRate += level * 500; // เพิ่ม hash rate ตามระดับ GPU
+    this.hashRate += level * 500;
     this.wallet -= cost;
     return { status: 'gpu_upgraded', gpuLevel: this.gpuLevel };
   }
@@ -124,8 +125,8 @@ class BitcoinMiner {
     const effectivePower = Math.max(this.powerConsumption - this.solarPower, 0);
     this.totalPowerUsed += effectivePower / 3600;
     this.wallet -= (effectivePower / 3600) * this.electricityCostPerKWh;
-    this.btcPrice *= (1 + (Math.random() * 0.1 - 0.05) * (this.bitcoinMined / 10)); // จำลอง supply/demand
-    this.temp += this.powerConsumption * 0.1; // ความร้อนเพิ่มตามการใช้พลังงาน
+    this.btcPrice *= (1 + (Math.random() * 0.1 - 0.05) * (this.bitcoinMined / 10));
+    this.temp += this.powerConsumption * 0.1;
     if (this.temp >= 80) this.stopMining();
 
     if (this.blocksMined % 50 === 0 && this.blocksMined > 0) {
@@ -140,7 +141,7 @@ class BitcoinMiner {
     if (this.history.length > 60) this.history.shift();
 
     this.updateMissions();
-    if (this.temp > 20) this.temp -= 0.5; // คูลดาวน์
+    if (this.temp > 20) this.temp -= 0.5;
   }
 
   checkLevelUp() {
@@ -148,7 +149,7 @@ class BitcoinMiner {
     if (this.exp >= expNeeded) {
       this.level++;
       this.exp = 0;
-      this.hashRate += 100; // โบนัส hash rate
+      this.hashRate += 100;
     }
   }
 
@@ -172,6 +173,7 @@ class BitcoinMiner {
 
   getStats() {
     return {
+      username: this.username,
       hashRate: this.hashRate,
       powerConsumption: this.powerConsumption,
       totalPowerUsed: this.totalPowerUsed.toFixed(4),
@@ -214,13 +216,14 @@ class BitcoinMiner {
       missions: this.missions,
       purchases: this.purchases
     };
-    fs.writeFileSync(path.join(__dirname, 'data', 'save.json'), JSON.stringify(data, null, 2));
+    fs.mkdirSync(path.join(__dirname, 'data', 'saves'), { recursive: true });
+    fs.writeFileSync(path.join(__dirname, 'data', 'saves', `${this.username}.json`), JSON.stringify(data, null, 2));
     return { status: 'game_saved' };
   }
 
   loadGame() {
     try {
-      const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'save.json')));
+      const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'saves', `${this.username}.json`)));
       this.hashRate = data.hashRate || 1000;
       this.powerConsumption = data.powerConsumption || 0.1;
       this.totalPowerUsed = data.totalPowerUsed || 0;
@@ -245,45 +248,105 @@ class BitcoinMiner {
 }
 
 const app = express();
-const miner = new BitcoinMiner();
+let miners = {}; // เก็บข้อมูล miner แยกตามผู้ใช้
+let currentUser = null;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-app.get('/stats', (req, res) => res.json(miner.getStats()));
-app.post('/start', (req, res) => res.json(miner.startMining()));
-app.post('/stop', (req, res) => res.json(miner.stopMining()));
+// Authentication
+app.post('/register', (req, res) => {
+  const { username, password } = req.body;
+  const users = fs.existsSync(path.join(__dirname, 'data', 'users.json'))
+    ? JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'users.json')))
+    : {};
+  if (users[username]) return res.json({ status: 'user_exists' });
+  users[username] = { password: crypto.createHash('sha256').update(password).digest('hex') };
+  fs.writeFileSync(path.join(__dirname, 'data', 'users.json'), JSON.stringify(users, null, 2));
+  miners[username] = new BitcoinMiner(username);
+  currentUser = username;
+  res.json({ status: 'registered' });
+});
+
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  const users = fs.existsSync(path.join(__dirname, 'data', 'users.json'))
+    ? JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'users.json')))
+    : {};
+  const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+  if (!users[username] || users[username].password !== hashedPassword) return res.json({ status: 'invalid_credentials' });
+  if (!miners[username]) miners[username] = new BitcoinMiner(username);
+  currentUser = username;
+  res.json({ status: 'logged_in' });
+});
+
+app.post('/logout', (req, res) => {
+  currentUser = null;
+  res.json({ status: 'logged_out' });
+});
+
+// Game endpoints
+app.get('/stats', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
+  res.json(miners[currentUser].getStats());
+});
+
+app.post('/start', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
+  res.json(miners[currentUser].startMining());
+});
+
+app.post('/stop', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
+  res.json(miners[currentUser].stopMining());
+});
+
 app.post('/upgrade', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
   const { hashRate, power, cost, type } = req.body;
-  res.json(miner.upgradeRig(hashRate, power, cost, type));
+  res.json(miners[currentUser].upgradeRig(hashRate, power, cost, type));
 });
+
 app.post('/upgrade-gpu', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
   const { level, cost } = req.body;
-  res.json(miner.upgradeGPU(level, cost));
+  res.json(miners[currentUser].upgradeGPU(level, cost));
 });
+
 app.post('/buy-solar', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
   const { power, cost } = req.body;
-  res.json(miner.buySolar(power, cost));
+  res.json(miners[currentUser].buySolar(power, cost));
 });
+
 app.post('/trade', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
   const { amount, action } = req.body;
-  res.json(miner.tradeBTC(amount, action));
+  res.json(miners[currentUser].tradeBTC(amount, action));
 });
-app.post('/save', (req, res) => res.json(miner.saveGame()));
-app.post('/load', (req, res) => res.json(miner.loadGame()));
+
+app.post('/save', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
+  res.json(miners[currentUser].saveGame());
+});
+
+app.post('/load', (req, res) => {
+  if (!currentUser) return res.json({ status: 'not_logged_in' });
+  res.json(miners[currentUser].loadGame());
+});
+
 app.get('/translations/:lang', (req, res) => {
   const lang = req.params.lang;
   const filePath = path.join(__dirname, 'public', 'translations', `${lang}.json`);
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).json({ error: 'Language not found' });
-  }
+  if (fs.existsSync(filePath)) res.sendFile(filePath);
+  else res.status(404).json({ error: 'Language not found' });
 });
 
 setInterval(() => {
-  miner.simulateMining();
-  miner.adjustDifficulty();
+  for (const username in miners) {
+    miners[username].simulateMining();
+    miners[username].adjustDifficulty();
+  }
 }, 1000);
 
 app.listen(3000, () => console.log('Server running on http://localhost:3000'));
