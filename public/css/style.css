@@ -1,83 +1,326 @@
-/* public/css/style.css */
+/* รีเซ็ตและตั้งค่าพื้นฐาน */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Orbitron', sans-serif;
+}
+
 body {
-    font-family: 'Orbitron', sans-serif;
-    background: #1a1a1a;
-    color: #fff;
-    margin: 0;
-    padding: 20px;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); /* Gradient สีเข้มลึก */
+  color: #e0e0ff;
+  min-height: 100vh;
+  padding: 30px;
+  overflow-x: hidden;
+}
+
+/* คอนเทนเนอร์หลัก */
+.container {
+  max-width: 1300px;
+  margin: 0 auto;
+  background: rgba(20, 20, 40, 0.85);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 212, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  animation: fadeIn 1s ease-in-out;
+}
+
+/* อนิเมชัน Fade In */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ส่วนหัว (Header) */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 25px;
+  border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+}
+
+header h1 {
+  font-size: 2.5rem;
+  color: #00eaff;
+  text-shadow: 0 0 15px rgba(0, 234, 255, 0.8), 0 0 30px rgba(0, 234, 255, 0.4);
+  animation: glowPulse 2s infinite alternate;
+}
+
+@keyframes glowPulse {
+  0% { text-shadow: 0 0 10px rgba(0, 234, 255, 0.6); }
+  100% { text-shadow: 0 0 20px rgba(0, 234, 255, 1), 0 0 40px rgba(0, 234, 255, 0.5); }
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info span {
+  font-size: 1.1rem;
+  color: #b0b0ff;
+}
+
+.user-info button {
+  background: linear-gradient(45deg, #ff4d4d, #ff1a1a);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(255, 77, 77, 0.4);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.user-info button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(255, 77, 77, 0.6);
+}
+
+/* เมนูนำทาง (Navigation) */
+nav {
+  display: flex;
+  gap: 15px;
+  margin: 25px 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+nav button {
+  background: linear-gradient(45deg, #2a2a4a, #3a3a6a);
+  border: none;
+  padding: 12px 25px;
+  color: #e0e0ff;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+nav button.active, nav button:hover {
+  background: linear-gradient(45deg, #00eaff, #007bff);
+  color: #1e1e2f;
+  box-shadow: 0 6px 20px rgba(0, 234, 255, 0.7);
+  transform: translateY(-3px);
+}
+
+#language {
+  padding: 10px 15px;
+  border-radius: 25px;
+  background: linear-gradient(45deg, #2a2a4a, #3a3a6a);
+  color: #e0e0ff;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#language:hover {
+  background: linear-gradient(45deg, #00eaff, #007bff);
+  color: #1e1e2f;
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  animation: slideIn 0.5s ease-in-out;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Dashboard และ Cards */
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  margin-top: 30px;
+}
+
+.stats-card, .controls-card, .chart-card, .trading-card, .shop-items {
+  background: rgba(30, 30, 60, 0.9);
+  border-radius: 15px;
+  padding: 25px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), inset 0 0 10px rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  transition: transform 0.3s;
+}
+
+.stats-card:hover, .controls-card:hover, .chart-card:hover, .trading-card:hover, .shop-items:hover {
+  transform: translateY(-5px);
+}
+
+.stats-card h2, .controls-card h2, .chart-card h2, .trading-card h2, .shop-items h2 {
+  color: #00eaff;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  text-shadow: 0 0 10px rgba(0, 234, 255, 0.5);
+}
+
+.stats-card p, .trading-card p {
+  margin: 12px 0;
+  font-size: 1.2rem;
+  color: #d0d0ff;
+}
+
+.mining-log {
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: #b0b0ff;
+}
+
+/* ปุ่มใน Controls */
+button.start-btn, button.stop-btn, button.save-btn, button.load-btn {
+  width: 100%;
+  padding: 15px;
+  margin: 12px 0;
+  border: none;
+  border-radius: 30px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.4s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+button.start-btn {
+  background: linear-gradient(45deg, #00cc00, #00ff00);
+}
+
+button.start-btn:hover {
+  background: linear-gradient(45deg, #00e600, #33ff33);
+  box-shadow: 0 8px 25px rgba(0, 255, 0, 0.5);
+  transform: scale(1.05);
+}
+
+button.stop-btn {
+  background: linear-gradient(45deg, #ff3333, #ff6666);
+}
+
+button.stop-btn:hover {
+  background: linear-gradient(45deg, #ff4d4d, #ff8080);
+  box-shadow: 0 8px 25px rgba(255, 51, 51, 0.5);
+  transform: scale(1.05);
+}
+
+button.save-btn, button.load-btn {
+  background: linear-gradient(45deg, #6666ff, #9999ff);
+}
+
+button.save-btn:hover, button.load-btn:hover {
+  background: linear-gradient(45deg, #8080ff, #b3b3ff);
+  box-shadow: 0 8px 25px rgba(102, 102, 255, 0.5);
+  transform: scale(1.05);
+}
+
+/* Shop Items */
+.shop-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.shop-item {
+  background: rgba(40, 40, 80, 0.9);
+  padding: 20px;
+  border-radius: 15px;
+  text-align: center;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  transition: all 0.4s ease;
+}
+
+.shop-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 234, 255, 0.5);
+  background: rgba(50, 50, 100, 0.9);
+}
+
+.shop-item p {
+  color: #d0d0ff;
+  margin: 10px 0;
+}
+
+.shop-item button {
+  background: linear-gradient(45deg, #00eaff, #007bff);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  color: #1e1e2f;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.shop-item button:hover {
+  background: linear-gradient(45deg, #33e6ff, #3399ff);
+  box-shadow: 0 5px 15px rgba(0, 234, 255, 0.7);
+}
+
+/* Chart */
+.chart-card canvas {
+  background: rgba(20, 20, 40, 0.7);
+  border-radius: 15px;
+  padding: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Notification */
+.notification {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(45deg, #00eaff, #007bff);
+  color: #1e1e2f;
+  padding: 15px 25px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 234, 255, 0.5);
+  animation: slideUp 0.5s ease-in-out;
+  display: none;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard {
+    grid-template-columns: 1fr;
   }
-  
-  .container, .auth-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: #2a2a2a;
-    padding: 20px;
-    border-radius: 10px;
+
+  header {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
   }
-  
-  h1, h2 {
-    color: #f7931a;
+
+  nav {
+    flex-direction: column;
+    align-items: center;
   }
-  
-  button {
-    background: #f7931a;
-    border: none;
-    padding: 10px 20px;
-    color: #fff;
-    cursor: pointer;
-    border-radius: 5px;
+
+  nav button, #language {
+    width: 80%;
   }
-  
-  button:disabled {
-    background: #555;
-    cursor: not-allowed;
+
+  .shop-items {
+    grid-template-columns: 1fr;
   }
-  
-  .tab-content {
-    display: none;
-  }
-  
-  .tab-content.active {
-    display: block;
-  }
-  
-  nav button {
-    margin-right: 10px;
-  }
-  
-  nav button.active {
-    background: #3498db;
-  }
-  
-  .notification {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #f7931a;
-    padding: 10px 20px;
-    border-radius: 5px;
-    display: none;
-  }
-  
-  .notification.show {
-    display: block;
-  }
-  
-  .dashboard, .trading-card, .shop-items, #missions-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-  
-  .stats-card, .controls-card, .shop-item, .mission-item {
-    background: #333;
-    padding: 20px;
-    border-radius: 10px;
-    flex: 1;
-    min-width: 200px;
-  }
-  
-  .mining-log p {
-    margin: 5px 0;
-  }
+}
