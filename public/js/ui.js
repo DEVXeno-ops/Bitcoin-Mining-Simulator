@@ -4,145 +4,134 @@ let translations = {};
 let currentLang = 'en';
 let isLoggedIn = false;
 
-function loadTranslations(lang) {
-  fetch(`/api/translations/${lang}`)
-    .then(response => response.json())
-    .then(data => {
-      translations = data;
-      applyTranslations();
-    })
-    .catch(error => console.error('Error loading translations:', error));
-}
+const loadTranslations = async lang => {
+  try {
+    const response = await fetch(`/api/translations/${lang}`);
+    translations = await response.json();
+    applyTranslations();
+  } catch (error) {
+    console.error('Error loading translations:', error);
+  }
+};
 
-function applyTranslations() {
-  document.querySelectorAll('[data-key]').forEach(element => {
-    const key = element.getAttribute('data-key');
+const applyTranslations = () => {
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const key = el.getAttribute('data-key');
     if (translations[key]) {
-      if (element.tagName === 'BUTTON') {
-        element.textContent = translations[key];
+      if (el.tagName === 'BUTTON' || el.tagName === 'INPUT') {
+        el.textContent = translations[key];
       } else {
-        const span = element.querySelector('span');
-        element.innerHTML = translations[key] + (span ? ` <span id="${span.id}">${span.textContent}</span>` : '');
+        const span = el.querySelector('span');
+        el.innerHTML = translations[key] + (span ? ` <span id="${span.id}">${span.textContent}</span>` : '');
       }
     }
   });
-  document.title = translations.title || 'Bitcoin Mining Simulator';
+  document.title = translations.title || 'Bitcoin Mining Simulator v0.1.0 Beta';
   updateMissions();
-}
+};
 
-function changeLanguage(lang) {
-  currentLang = lang;
-  loadTranslations(lang);
-}
+const changeLanguage = lang => loadTranslations(lang);
 
-function showTab(tabId) {
+const showTab = tabId => {
+  const tabElement = document.getElementById(tabId);
+  if (!tabElement) {
+    console.error(`Tab with ID "${tabId}" not found`);
+    return;
+  }
+
   document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  document.querySelector(`button[onclick="showTab('${tabId}')"]`).classList.add('active');
-  if (tabId === 'missions') updateMissions();
-}
 
-function showNotification(message) {
+  tabElement.classList.add('active');
+
+  const activeButton = document.querySelector(`button[onclick="showTab('${tabId}')"]`);
+  if (activeButton) {
+    activeButton.classList.add('active');
+  } else {
+    console.warn(`Button for tab "${tabId}" not found`);
+  }
+
+  if (tabId === 'missions') updateMissions();
+};
+
+const showNotification = (message, isError = false) => {
   const notification = document.getElementById('notification');
   if (notification) {
-    notification.textContent = message;
+    notification.textContent = translations[message] || message;
+    notification.style.background = isError ? '#e74c3c' : '#f7931a';
     notification.classList.add('show');
     setTimeout(() => notification.classList.remove('show'), 3000);
   }
-}
+};
 
-function updateStats() {
+const updateStats = async () => {
   if (!isLoggedIn) return;
 
-  fetch('/api/stats')
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      return response.json();
-    })
-    .then(data => {
-      if (data.status === 'not_logged_in') {
-        isLoggedIn = false;
-        window.location.href = 'login.html';
-        return;
-      }
+  try {
+    const response = await fetch('/api/stats');
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
 
-      isLoggedIn = true;
-      const elements = {
-        usernameDisplay: `User: ${data.username}`,
-        level: data.level,
-        exp: data.exp,
-        expNeeded: data.level * 100,
-        hashRate: data.hashRate,
-        powerConsumption: data.powerConsumption,
-        totalPowerUsed: data.totalPowerUsed,
-        bitcoinMined: data.bitcoinMined,
-        blocksMined: data.blocksMined,
-        blockReward: data.blockReward,
-        wallet: data.wallet,
-        btcPrice: data.btcPrice,
-        difficulty: data.difficulty,
-        energyType: data.energyType,
-        solarPower: data.solarPower,
-        temp: data.temp,
-        gpuLevel: data.gpuLevel,
-        tradeBtcPrice: data.btcPrice,
-        tradeBitcoinMined: data.bitcoinMined,
-        tradeWallet: data.wallet
-      };
-
-      for (const [id, value] of Object.entries(elements)) {
-        const element = document.getElementById(id);
-        if (element) {
-          element.textContent = value;
-        } else {
-          console.warn(`Element with ID '${id}' not found in DOM`);
-        }
-      }
-
-      updateMiningLog(data.miningLog);
-      updateChart(data.history);
-      updateShopButtons(data.purchases);
-
-      const startBtn = document.querySelector('.start-btn');
-      const stopBtn = document.querySelector('.stop-btn');
-      if (startBtn) startBtn.disabled = data.isMining;
-      if (stopBtn) stopBtn.disabled = !data.isMining;
-    })
-    .catch(error => {
-      console.error('Error fetching stats:', error);
-      if (error.message.includes('401')) {
-        isLoggedIn = false;
-        window.location.href = 'login.html';
-      } else {
-        showNotification(translations.stats_failed || 'Failed to update stats');
-      }
-    });
-}
-
-function updateMiningLog(log) {
-  const logDiv = document.getElementById('miningLog');
-  if (logDiv) {
-    logDiv.innerHTML = log.map(entry => `<p>${entry}</p>`).join('');
-  }
-}
-
-function updateShopButtons(purchases) {
-  const shopItems = {
-    basicRig: '#basicRig button',
-    advancedRig: '#advancedRig button',
-    proRig: '#proRig button',
-    solar: '#solar button'
-  };
-  for (const [key, selector] of Object.entries(shopItems)) {
-    if (purchases[key]) {
-      const button = document.querySelector(selector);
-      if (button) button.textContent = translations.purchased || 'Purchased';
+    if (data.status === 'not_logged_in') {
+      isLoggedIn = false;
+      window.location.href = 'login.html';
+      return;
     }
-  }
-}
 
-function updateChart(history) {
+    isLoggedIn = true;
+    const elements = {
+      usernameDisplay: `${translations.user}: ${data.username}`,
+      level: data.level,
+      exp: data.exp,
+      expNeeded: data.level * 200,
+      hashRate: `${data.hashRate} H/s`,
+      powerConsumption: `${data.powerConsumption.toFixed(2)} kW`,
+      totalPowerUsed: `${data.totalPowerUsed.toFixed(2)} kWh`,
+      bitcoinMined: `${data.bitcoinMined.toFixed(6)} BTC`,
+      blocksMined: data.blocksMined,
+      blockReward: `${data.blockReward.toFixed(4)} BTC`,
+      wallet: `$${data.wallet.toFixed(2)}`,
+      btcPrice: `$${data.btcPrice.toFixed(2)}`,
+      marketDemand: `${data.marketDemand.toFixed(1)}%`,
+      difficulty: data.difficulty,
+      energyType: translations[data.energyType] || data.energyType,
+      solarPower: `${data.solarPower} kW`,
+      windPower: `${data.windPower} kW`,
+      nuclearPower: `${data.nuclearPower} kW`,
+      temp: `${data.temp.toFixed(1)}°C`,
+      gpuLevel: data.gpuLevel,
+      coolingLevel: data.coolingLevel,
+      tradeBtcPrice: `$${data.btcPrice.toFixed(2)}`,
+      tradeBitcoinMined: `${data.bitcoinMined.toFixed(6)} BTC`,
+      tradeWallet: `$${data.wallet.toFixed(2)}`
+    };
+
+    Object.entries(elements).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    });
+
+    const tempFill = document.querySelector('.temp-fill');
+    if (tempFill) tempFill.style.width = `${Math.min(data.temp, 100)}%`;
+
+    updateMiningLog(data.miningLog);
+    updateChart(data.history);
+
+    document.querySelector('.start-btn').disabled = data.isMining;
+    document.querySelector('.stop-btn').disabled = !data.isMining;
+    document.querySelector('.cooling-btn').textContent = data.coolingActive ? translations.cooling_off : translations.cooling_on;
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    showNotification('stats_failed', true);
+  }
+};
+
+const updateMiningLog = log => {
+  const logDiv = document.getElementById('miningLog');
+  if (logDiv) logDiv.innerHTML = log.map(entry => `<p>${translations[entry] || entry}</p>`).join('');
+};
+
+const updateChart = history => {
   const ctx = document.getElementById('miningChart')?.getContext('2d');
   if (!ctx) return;
 
@@ -156,71 +145,72 @@ function updateChart(history) {
           { label: translations.btc_price || 'BTC Price ($)', data: [], borderColor: '#3498db', fill: false }
         ]
       },
-      options: { scales: { y: { beginAtZero: false } } }
+      options: { scales: { y: { beginAtZero: false } }, responsive: true }
     });
   }
   chart.data.labels = history.map(h => h.time);
   chart.data.datasets[0].data = history.map(h => h.btcMined);
   chart.data.datasets[1].data = history.map(h => h.btcPrice);
   chart.update();
-}
+};
 
-function updateMissions() {
+const updateMissions = async () => {
   if (!isLoggedIn) return;
 
-  fetch('/api/stats')
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'not_logged_in') return;
-      const missionsList = document.getElementById('missions-list');
-      if (missionsList) {
-        missionsList.innerHTML = '';
-        data.missions.forEach(mission => {
-          const div = document.createElement('div');
-          div.className = 'mission-item';
-          div.innerHTML = `
-            <p>${translations.mission}: ${translations[mission.desc] || mission.desc}</p>
-            <p>${translations.progress}: ${mission.progress}/${mission.target}</p>
-            <p>${translations.reward}: $${mission.reward}</p>
-            <p>${translations.status}: ${mission.completed ? translations.completed : translations.in_progress}</p>
-          `;
-          missionsList.appendChild(div);
-        });
-      }
-    })
-    .catch(error => console.error('Error updating missions:', error));
-}
+  try {
+    const response = await fetch('/api/stats');
+    const data = await response.json();
+    if (data.status === 'not_logged_in') return;
 
-// รอให้ DOM โหลดเสร็จก่อนเริ่มการทำงาน
-document.addEventListener('DOMContentLoaded', () => {
-  loadTranslations('en');
+    const missionsList = document.getElementById('missions-list');
+    if (missionsList) {
+      missionsList.innerHTML = data.missions.map(mission => `
+        <div class="mission-item">
+          <p>${translations.mission}: ${translations[mission.desc] || mission.desc}</p>
+          <p>${translations.progress}: ${mission.progress}/${mission.target}</p>
+          <p>${translations.reward}: $${mission.reward}</p>
+          <p>${translations.status}: ${mission.completed ? translations.completed : translations.in_progress}</p>
+        </div>
+      `).join('');
+    }
+  } catch (error) {
+    console.error('Error updating missions:', error);
+  }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadTranslations('en');
   let statsInterval = null;
 
-  // ตรวจสอบสถานะการล็อกอินเมื่อโหลดหน้า
-  fetch('/api/stats')
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      return response.json();
-    })
-    .then(data => {
-      if (data.status === 'not_logged_in') {
-        isLoggedIn = false;
-        window.location.href = 'login.html';
-      } else {
-        isLoggedIn = true;
-        updateStats();
-        statsInterval = setInterval(() => {
-          if (isLoggedIn) updateStats();
-        }, 1000);
-      }
-    })
-    .catch(error => {
-      console.error('Initial stats check failed:', error);
+  try {
+    const response = await fetch('/api/stats');
+    const data = await response.json();
+    if (data.status === 'not_logged_in') {
       isLoggedIn = false;
       window.location.href = 'login.html';
-    });
+    } else {
+      isLoggedIn = true;
+      updateStats();
+      statsInterval = setInterval(updateStats, 1000);
+    }
+  } catch (error) {
+    isLoggedIn = false;
+    window.location.href = 'login.html';
+  }
 
-  // หยุด interval เมื่อออกจากหน้า
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.getAttribute('data-action');
+      const args = btn.getAttribute('data-args')?.split(',') || [];
+      if (typeof window[action] === 'function') {
+        window[action](...args);
+      } else {
+        console.error(`Action "${action}" is not a function or not defined`);
+        showNotification(`Action "${action}" not found`, true);
+      }
+    });
+  });
+
   window.addEventListener('unload', () => {
     if (statsInterval) clearInterval(statsInterval);
   });

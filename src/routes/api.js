@@ -1,56 +1,58 @@
 // src/routes/api.js
 const express = require('express');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 const BitcoinMiner = require('../models/BitcoinMiner');
-const { startMining, stopMining, simulateMining } = require('../utils/mining');
-const { upgradeRig, upgradeGPU, buySolar, tradeBTC } = require('../utils/shop');
+const { startMining, stopMining, simulateMining, toggleCooling } = require('../utils/mining');
+const { upgradeRig, upgradeGPU, buyPower, upgradeCooling, tradeBTC } = require('../utils/shop');
 const { saveGame, loadGame } = require('../utils/storage');
 
 const router = express.Router();
+const state = { miners: {}, currentUser: null };
 
-// เก็บ miners และ currentUser ใน object เพื่อไม่ให้สูญหายระหว่างการรีเควส
-const state = {
-  miners: {},
-  currentUser: null
+const requireLogin = (req, res, next) => {
+  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
+  next();
 };
 
-router.use((req, res, next) => {
-  fs.mkdirSync(path.join(__dirname, '../../data'), { recursive: true });
+router.use(async (req, res, next) => {
+  await fs.mkdir(path.join(__dirname, '../../data'), { recursive: true });
   next();
 });
 
-// Authentication Routes
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ status: 'missing_fields' });
 
   const usersFile = path.join(__dirname, '../../data/users.json');
   let users = {};
-  if (fs.existsSync(usersFile) && fs.readFileSync(usersFile, 'utf8').trim() !== '') {
-    users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+  try {
+    users = JSON.parse(await fs.readFile(usersFile, 'utf8') || '{}');
+  } catch (error) {
+    if (error.code !== 'ENOENT') console.error('Error reading users:', error);
   }
 
   if (users[username]) return res.json({ status: 'user_exists' });
 
   users[username] = { password: crypto.createHash('sha256').update(password).digest('hex') };
-  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+  await fs.writeFile(usersFile, JSON.stringify(users, null, 2));
   state.miners[username] = new BitcoinMiner(username);
   state.currentUser = username;
   res.json({ status: 'registered', username });
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ status: 'missing_fields' });
 
   const usersFile = path.join(__dirname, '../../data/users.json');
   let users = {};
-  if (fs.existsSync(usersFile) && fs.readFileSync(usersFile, 'utf8').trim() !== '') {
-    users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
-  } else {
-    return res.json({ status: 'no_users_found' });
+  try {
+    users = JSON.parse(await fs.readFile(usersFile, 'utf8') || '{}');
+  } catch (error) {
+    if (error.code === 'ENOENT') return res.json({ status: 'no_users_found' });
+    return res.status(500).json({ status: 'login_failed' });
   }
 
   const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
@@ -58,7 +60,7 @@ router.post('/login', (req, res) => {
     return res.json({ status: 'invalid_credentials' });
   }
 
-  if (!state.miners[username]) state.miners[username] = new BitcoinMiner(username);
+  state.miners[username] = state.miners[username] || new BitcoinMiner(username);
   state.currentUser = username;
   res.json({ status: 'logged_in', username });
 });
@@ -68,94 +70,72 @@ router.post('/logout', (req, res) => {
   res.json({ status: 'logged_out' });
 });
 
-// Game Routes
-router.get('/stats', (req, res) => {
-  if (!state.currentUser) {
-    return res.status(401).json({ status: 'not_logged_in' });
-  }
-  try {
-    const stats = state.miners[state.currentUser].getStats();
-    res.json(stats);
-  } catch (error) {
-    console.error(`Error fetching stats for ${state.currentUser}:`, error);
-    res.status(500).json({ status: 'stats_failed', error: error.message });
-  }
+router.get('/stats', requireLogin, (req, res) => {
+  res.json(state.miners[state.currentUser].getStats());
 });
 
-router.post('/start', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
-  try {
-    res.json(startMining(state.miners[state.currentUser]));
-  } catch (error) {
-    console.error(`Error starting mining for ${state.currentUser}:`, error);
-    res.status(500).json({ status: 'start_failed', error: error.message });
-  }
+router.post('/start', requireLogin, (req, res) => {
+  res.json(startMining(state.miners[state.currentUser]));
 });
 
-router.post('/stop', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
-  try {
-    res.json(stopMining(state.miners[state.currentUser]));
-  } catch (error) {
-    console.error(`Error stopping mining for ${state.currentUser}:`, error);
-    res.status(500).json({ status: 'stop_failed', error: error.message });
-  }
+router.post('/stop', requireLogin, (req, res) => {
+  res.json(stopMining(state.miners[state.currentUser]));
 });
 
-router.post('/upgrade', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
+router.post('/cooling', requireLogin, (req, res) => {
+  res.json(toggleCooling(state.miners[state.currentUser]));
+});
+
+router.post('/upgrade', requireLogin, (req, res) => {
   const { hashRate, power, cost, type } = req.body;
   if (!hashRate || !power || !cost || !type) return res.status(400).json({ status: 'missing_fields' });
   res.json(upgradeRig(state.miners[state.currentUser], hashRate, power, cost, type));
 });
 
-router.post('/upgrade-gpu', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
+router.post('/upgrade-gpu', requireLogin, (req, res) => {
   const { level, cost } = req.body;
   if (!level || !cost) return res.status(400).json({ status: 'missing_fields' });
   res.json(upgradeGPU(state.miners[state.currentUser], level, cost));
 });
 
-router.post('/buy-solar', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
-  const { power, cost } = req.body;
-  if (!power || !cost) return res.status(400).json({ status: 'missing_fields' });
-  res.json(buySolar(state.miners[state.currentUser], power, cost));
+router.post('/buy-power', requireLogin, (req, res) => {
+  const { power, cost, type } = req.body;
+  if (!power || !cost || !type) return res.status(400).json({ status: 'missing_fields' });
+  res.json(buyPower(state.miners[state.currentUser], power, cost, type));
 });
 
-router.post('/trade', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
+router.post('/upgrade-cooling', requireLogin, (req, res) => {
+  const { level, cost } = req.body;
+  if (!level || !cost) return res.status(400).json({ status: 'missing_fields' });
+  res.json(upgradeCooling(state.miners[state.currentUser], level, cost));
+});
+
+router.post('/trade', requireLogin, (req, res) => {
   const { amount, action } = req.body;
   if (!amount || !action) return res.status(400).json({ status: 'missing_fields' });
   res.json(tradeBTC(state.miners[state.currentUser], amount, action));
 });
 
-router.post('/save', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
-  res.json(saveGame(state.miners[state.currentUser]));
+router.post('/save', requireLogin, async (req, res) => {
+  res.json(await saveGame(state.miners[state.currentUser]));
 });
 
-router.post('/load', (req, res) => {
-  if (!state.currentUser) return res.status(401).json({ status: 'not_logged_in' });
-  res.json(loadGame(state.miners[state.currentUser]));
+router.post('/load', requireLogin, async (req, res) => {
+  res.json(await loadGame(state.miners[state.currentUser]));
 });
 
 router.get('/translations/:lang', (req, res) => {
   const lang = req.params.lang;
   const filePath = path.join(__dirname, '../../public/translations', `${lang}.json`);
-  if (fs.existsSync(filePath)) res.sendFile(filePath);
-  else res.status(404).json({ error: 'Language not found' });
+  res.sendFile(filePath, err => {
+    if (err) res.status(404).json({ error: 'Language not found' });
+  });
 });
 
-// Simulation Loop
 setInterval(() => {
   for (const username in state.miners) {
-    try {
-      simulateMining(state.miners[username]);
-      state.miners[username].adjustDifficulty();
-    } catch (error) {
-      console.error(`Error in simulation for ${username}:`, error);
-    }
+    simulateMining(state.miners[username]);
+    state.miners[username].adjustDifficulty();
   }
 }, 1000);
 

@@ -1,62 +1,68 @@
 // src/utils/mining.js
 function startMining(miner) {
-    if (miner.isMining) {
-      console.log(`User ${miner.username}: Already mining`);
-      return { status: 'already_mining' };
-    }
-    if (miner.temp >= 80) {
-      console.log(`User ${miner.username}: Overheat, temp = ${miner.temp}`);
-      return { status: 'overheat' };
-    }
-    miner.isMining = true;
-    console.log(`User ${miner.username}: Mining started, hashRate = ${miner.hashRate}`);
-    return { status: 'mining_started', isMining: miner.isMining };
+  if (miner.state.isMining) return { status: 'already_mining' };
+  if (miner.stats.temp >= 85) return { status: 'overheat' };
+  if (miner.stats.powerConsumption > miner.stats.solarPower + miner.stats.windPower + miner.stats.nuclearPower && miner.stats.wallet < 10) {
+    return { status: 'insufficient_power_funds' };
   }
-  
-  function stopMining(miner) {
-    miner.isMining = false;
-    console.log(`User ${miner.username}: Mining stopped`);
-    return { status: 'mining_stopped', isMining: miner.isMining };
+
+  miner.state.isMining = true;
+  miner.miningLog.push(`Mining started at ${new Date().toLocaleTimeString()}`);
+  return { status: 'mining_started', isMining: true };
+}
+
+function stopMining(miner) {
+  miner.state.isMining = false;
+  miner.miningLog.push(`Mining stopped at ${new Date().toLocaleTimeString()}`);
+  return { status: 'mining_stopped', isMining: false };
+}
+
+function simulateMining(miner) {
+  if (!miner.state.isMining) return;
+
+  const failureChance = Math.min(0.3, miner.stats.temp / 200); // โอกาสล้มเหลวสูงขึ้นถ้าร้อน
+  if (Math.random() < failureChance) {
+    miner.miningLog.push('Mining failed due to overheating!');
+    stopMining(miner);
+    return;
   }
-  
-  function simulateMining(miner) {
-    if (!miner.isMining) return;
-  
-    let hashesProcessed = 0;
-    for (let i = 0; i < miner.hashRate; i++) {
-      const header = miner.createBlockHeader(miner.nonce.toString(16));
-      const hash = miner.calculateHash(header);
-      hashesProcessed++;
-      if (hash < miner.difficulty) {
-        miner.bitcoinMined += miner.blockReward;
-        miner.keysMined++;
-        miner.exp += 10;
-        miner.nonce = 0;
-        miner.miningLog.push(`Block mined! Reward: ${miner.blockReward} BTC at ${new Date().toLocaleTimeString()}`);
-        if (miner.miningLog.length > 5) miner.miningLog.shift();
-        miner.checkLevelUp();
-      }
-      miner.nonce++;
+
+  let hashesProcessed = 0;
+  for (let i = 0; i < Math.floor(miner.stats.hashRate / 10); i++) { // ลดการขุดให้สมจริง
+    const header = miner.createBlockHeader(miner.state.nonce.toString(16));
+    const hash = miner.calculateHash(header);
+    hashesProcessed++;
+
+    if (hash < miner.stats.difficulty) {
+      const reward = miner.stats.blockReward * (1 - miner.state.marketDemand / 100); // รางวัลลดลงถ้าตลาดอิ่มตัว
+      miner.stats.bitcoinMined += reward;
+      miner.stats.blocksMined++;
+      miner.stats.exp += 5;
+      miner.state.nonce = 0;
+      miner.miningLog.push(`Block mined! Reward: ${reward.toFixed(4)} BTC`);
+      if (miner.stats.blocksMined % 100 === 0) miner.stats.blockReward = Math.max(0.01, miner.stats.blockReward / 2);
     }
-  
-    const effectivePower = Math.max(miner.powerConsumption - miner.solarPower, 0);
-    miner.totalPowerUsed += effectivePower / 3600;
-    miner.wallet -= (effectivePower / 3600) * miner.electricityCostPerKWh;
-    miner.btcPrice = Math.max(1000, miner.btcPrice * (1 + (Math.random() * 0.1 - 0.05)));
-    miner.temp += miner.powerConsumption * 0.1;
-    if (miner.temp >= 80) stopMining(miner);
-  
-    if (miner.keysMined > 0 && miner.keysMined % 50 === 0) {
-      miner.blockReward = Math.max(0.01, miner.blockReward / 2);
-    }
-  
-    miner.history.push({ time: new Date().toLocaleTimeString(), btcMined: miner.bitcoinMined, btcPrice: miner.btcPrice });
-    if (miner.history.length > 60) miner.history.shift();
-  
-    miner.updateMissions();
-    if (miner.temp > 20) miner.temp -= 0.5;
-  
-    console.log(`User ${miner.username}: Simulated mining, hashes = ${hashesProcessed}, BTC = ${miner.bitcoinMined}`);
+    miner.state.nonce++;
   }
-  
-  module.exports = { startMining, stopMining, simulateMining };
+
+  const effectivePower = Math.max(miner.stats.powerConsumption - (miner.stats.solarPower + miner.stats.windPower + miner.stats.nuclearPower), 0);
+  miner.stats.totalPowerUsed += effectivePower / 3600;
+  miner.stats.wallet -= effectivePower * miner.stats.energyCost;
+  miner.stats.temp += effectivePower * 0.2 - (miner.state.coolingActive ? miner.stats.coolingLevel * 0.5 : 0);
+  miner.stats.temp = Math.max(20, Math.min(100, miner.stats.temp));
+
+  miner.updateMarket();
+  miner.history.push({ time: new Date().toLocaleTimeString(), btcMined: miner.stats.bitcoinMined, btcPrice: miner.stats.btcPrice });
+  if (miner.history.length > 60) miner.history.shift();
+
+  miner.updateMissions();
+  if (!miner.state.coolingActive && miner.stats.temp > 20) miner.stats.temp -= 0.1;
+}
+
+function toggleCooling(miner) {
+  miner.state.coolingActive = !miner.state.coolingActive;
+  miner.stats.wallet -= miner.state.coolingActive ? miner.stats.coolingLevel * 5 : 0; // ค่าใช้จ่ายการระบายความร้อน
+  return { status: miner.state.coolingActive ? 'cooling_on' : 'cooling_off' };
+}
+
+module.exports = { startMining, stopMining, simulateMining, toggleCooling };
